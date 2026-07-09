@@ -50,6 +50,15 @@ dependencies {
 
 loom {
     accessWidenerPath = rootProject.file("src/main/resources/authagain.accesswidener")
+    // NeoForge has no convertAccessWideners so we register the same AT with loom and ship it as a resource so NeoForge applies it in production and Minecraft.
+    neoForge {
+        accessTransformer(rootProject.file("neoforge/access/META-INF/accesstransformer.cfg"))
+    }
+}
+
+// Pack the NeoForge access transformer into the jar
+sourceSets.main {
+    resources.srcDir(rootProject.file("neoforge/access"))
 }
 
 java {
@@ -106,6 +115,7 @@ tasks.processResources {
         "authors" to p.get<String>("mod.authors"),
         "description" to p.get<String>("mod.description"),
         "loader_version_range" to p.get<String>("mod.loader_range"),
+        "fml_version_range" to p.get<String>("mod.fml_range"),
         "minecraft_version_range" to p.get<String>("mod.mc_dep"),
         "pack_format" to p.get<String>("mod.pack_format"),
     )

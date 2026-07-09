@@ -6,20 +6,47 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.Base64;
 import java.util.UUID;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.MockedStatic;
 
 import com.google.gson.JsonObject;
 
+import dev.rluo.authagain.config.AuthAgainConfig;
+import dev.rluo.authagain.support.ModBootstrap;
 import net.raphimc.minecraftauth.java.JavaAuthManager;
 import net.raphimc.minecraftauth.java.model.MinecraftProfile;
 import net.raphimc.minecraftauth.java.model.MinecraftToken;
 import net.raphimc.minecraftauth.util.holder.Holder;
 
 class ReauthServiceTest {
+
+	@BeforeAll
+	static void boot() {
+		ModBootstrap.init();
+	}
+
+	/** A JavaAuthManager whose login yields the given profile, xuid, and serialized session. */
+	private static JavaAuthManager loginManager(MockedStatic<JavaAuthManager> statics, String name, UUID uuid,
+			String xuid, JsonObject session) {
+		MinecraftProfile profile = mock(MinecraftProfile.class);
+		when(profile.getName()).thenReturn(name);
+		when(profile.getId()).thenReturn(uuid);
+		JavaAuthManager manager = managerWith(jwt("{\"xuid\":\"" + xuid + "\"}"), profile);
+		statics.when(() -> JavaAuthManager.toJson(manager)).thenReturn(session);
+		return manager;
+	}
+
+	private static JsonObject session(String marker) {
+		JsonObject json = new JsonObject();
+		json.addProperty("marker", marker);
+		return json;
+	}
 
 	/** Builds an unsigned JWT whose payload is the given JSON. */
 	private static String jwt(String payloadJson) {
@@ -115,5 +142,60 @@ class ReauthServiceTest {
 			assertThat(refreshed.session()).isEqualTo(serialized);
 			assertThat(refreshed.lastRefreshedAt()).isGreaterThan(1L);
 		}
+	}
+
+	/**
+	 * reauthing account A but signing into the wrong Microsoft account B
+	 * must add B as its own record and leave A untouched, rather than overwriting A's
+	 * identity with B's session.
+	 */
+	@Test
+	void resolveLoginKeepsWrongAccountSeparateFromReauthTarget(@TempDir Path dir) {
+		AuthAgainConfig.persistAccounts = true;
+		AccountStore store = new AccountStore(dir.resolve("accounts.json").toString());
+
+		AuthAccount a = new AuthAccount("Steve", UUID.randomUUID(), "xuid-a", session("a"));
+		store.add(a);
+
+		UUID uuidB = UUID.randomUUID();
+		try (MockedStatic<JavaAuthManager> statics = mockStatic(JavaAuthManager.class)) {
+			JavaAuthManager manager = loginManager(statics, "Alex", uuidB, "xuid-b", session("b"));
+			store.add(ReauthService.resolveLogin(store, manager));
+		}
+
+		assertThat(store.list()).hasSize(2);
+		assertThat(store.findByUuid(a.uuid())).isEqualTo(a);
+
+		AuthAccount addedB = store.findByUuid(uuidB);
+		assertThat(addedB.displayName()).isEqualTo("Alex");
+		assertThat(addedB.xuid()).isEqualTo("xuid-b");
+		assertThat(addedB.session().get("marker").getAsString()).isEqualTo("b");
+		assertThat(addedB.id()).isNotEqualTo(a.id());
+	}
+
+	/**
+	 * when the logged-in account already exists in the store, its record is
+	 * updated in place rather than appended.
+	 */
+	@Test
+	void resolveLoginUpdatesExistingAccountInPlace(@TempDir Path dir) {
+		AuthAgainConfig.persistAccounts = true;
+		AccountStore store = new AccountStore(dir.resolve("accounts.json").toString());
+
+		UUID uuid = UUID.randomUUID();
+		AuthAccount existing = new AuthAccount("Steve", uuid, "xuid-old", session("old"));
+		store.add(existing);
+
+		try (MockedStatic<JavaAuthManager> statics = mockStatic(JavaAuthManager.class)) {
+			JavaAuthManager manager = loginManager(statics, "SteveRenamed", uuid, "xuid-new", session("new"));
+			store.add(ReauthService.resolveLogin(store, manager));
+		}
+
+		assertThat(store.list()).hasSize(1);
+		AuthAccount updated = store.findByUuid(uuid);
+		assertThat(updated.id()).isEqualTo(existing.id());
+		assertThat(updated.displayName()).isEqualTo("SteveRenamed");
+		assertThat(updated.xuid()).isEqualTo("xuid-new");
+		assertThat(updated.session().get("marker").getAsString()).isEqualTo("new");
 	}
 }

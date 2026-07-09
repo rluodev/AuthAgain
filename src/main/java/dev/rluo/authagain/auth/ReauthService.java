@@ -154,6 +154,20 @@ public final class ReauthService {
     }
 
     /**
+     * Resolves the {@link AuthAccount} to persist after a device-code login.
+     * <p>
+     * A reauth can return a different Minecraft account than the one the user
+     * meant to refresh (they can pick the wrong Microsoft account), so we match
+     * on the uuid that was returned
+     * an existing record with that uuid is updated in place, otherwise a brand-new account is returned
+     */
+    public static AuthAccount resolveLogin(AccountStore store, JavaAuthManager authManager) {
+        AuthAccount loggedIn = toAccount(authManager);
+        AuthAccount match = store.findByUuid(loggedIn.uuid());
+        return match == null ? loggedIn : toAccount(match, authManager);
+    }
+
+    /**
      * Reads the XUID from the Minecraft access token JWT.
      * <p>
      * The Java flow does not expose the XUID, so we decode the

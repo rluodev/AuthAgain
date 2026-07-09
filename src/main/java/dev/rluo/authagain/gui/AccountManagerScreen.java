@@ -81,7 +81,7 @@ public class AccountManagerScreen extends Screen {
 		removeButton = addRenderableWidget(Button.builder(Component.translatable("gui.authagain.row.remove"),
 				btn -> withSelection(this::onRemoveClicked)).bounds(barX + 208, topY, 100, 20).build());
 		addRenderableWidget(Button.builder(Component.translatable("gui.authagain.add"),
-				btn -> minecraft.setScreen(new DeviceCodeScreen(this, null)))
+				btn -> minecraft.setScreen(new DeviceCodeScreen(this)))
 				.bounds(barX, bottomY, 152, 20).build());
 		addRenderableWidget(Button.builder(CommonComponents.GUI_DONE, btn -> onClose())
 				.bounds(barX + 156, bottomY, 152, 20).build());
@@ -151,7 +151,7 @@ public class AccountManagerScreen extends Screen {
 		ReauthService.silentRefresh(account.session()).whenComplete((manager, throwable) -> minecraft.execute(() -> {
 			busy = false;
 			if (throwable != null) {
-				minecraft.setScreen(new DeviceCodeScreen(this, account));
+				minecraft.setScreen(new DeviceCodeScreen(this));
 				return;
 			}
 			AuthAccount refreshed = ReauthService.toAccount(account, manager);

@@ -24,5 +24,7 @@ deps.loader = "47.4.10"
 [neoforge."1.21.1"]
 mod.mc_dep = "[1.21.1,1.21.2)"
 mod.loader_range = "[21.1.0,)"
+# javafml language-provider version, distinct from the NeoForge platform version above.
+mod.fml_range = "[4,)"
 mod.pack_format = "34"
 deps.loader = "21.1.235"
