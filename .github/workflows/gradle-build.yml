@@ -53,35 +53,8 @@ jobs:
           java-version: 17
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
-      - name: Build nightly jar and coverage report
+      - name: Build nightly jar
         run: ./gradlew build -Pmod_version=1.0.0-nightly-$(date -u +%Y%m%d)-${GITHUB_SHA::7}
-      - name: Export Jacoco coverage summary
-        run: |
-          python3 - <<'PY'
-          import json
-          import xml.etree.ElementTree as ET
-          from pathlib import Path
-
-          xml_path = Path('build/reports/jacoco/test/jacocoTestReport.xml')
-          root = ET.parse(xml_path).getroot()
-          counter = root.find("./counter[@type='LINE']")
-          if counter is None:
-              raise SystemExit(f'Could not find LINE counter in {xml_path}')
-
-          covered = int(counter.attrib['covered'])
-          missed = int(counter.attrib['missed'])
-          total = covered + missed
-          percent = 100.0 if total == 0 else (covered / total) * 100.0
-
-          coverage = {
-              'totals': {
-                  'percent_covered_display': round(percent, 1),
-              }
-          }
-          Path('coverage.json').write_text(json.dumps(coverage), encoding='utf-8')
-          PY
-      - name: Update Coverage Badge
-        uses: we-cli/coverage-badge-action@main
       - name: Publish rolling nightly release
         env:
           GH_TOKEN: ${{ github.token }}
