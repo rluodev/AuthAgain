@@ -117,8 +117,15 @@ public class AccountManagerScreen extends Screen {
 		});
 	}
 
-	/** Refreshes an account's session and stores it. */
+	/**
+	 * Refreshes an account's session and stores it. Also, replaces the active session
+	 * if the refreshed account was the active one.
+	 */
 	void reauth(AuthAccount account) {
+		if (account.uuid().equals(AuthAgainMod.globalAccountStore.getActiveUuid())) {
+			setActive(account);
+			return;
+		}
 		runAction(account, (refreshed, manager) -> AuthAgainMod.globalAccountStore.replace(refreshed));
 	}
 

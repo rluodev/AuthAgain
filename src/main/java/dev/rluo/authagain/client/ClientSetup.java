@@ -37,5 +37,6 @@ public class ClientSetup {
 
 		MinecraftForge.EVENT_BUS.addListener(ScreenHooks::titleScreenEvent);
 		MinecraftForge.EVENT_BUS.addListener(ScreenHooks::joinMultiplayerScreenEvent);
+		MinecraftForge.EVENT_BUS.addListener(ScreenHooks::joinMultiplayerRenderEvent);
 	}
 }
