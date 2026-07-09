@@ -22,8 +22,8 @@ jobs:
           java-version: 21
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
-      - name: Build with Gradle
-        run: ./gradlew chiseledBuildAndCollect
+      - name: Test with Gradle
+        run: ./gradlew chiseledTest
       - name: Upload test report
         if: failure()
         uses: actions/upload-artifact@v4

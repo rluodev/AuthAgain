@@ -110,7 +110,7 @@ tasks.processResources {
         listOf("META-INF/neoforge.mods.toml", "pack.mcmeta"),
         "id" to p.get<String>("mod.id"),
         "name" to p.get<String>("mod.name"),
-        "version" to p.get<String>("mod.version"),
+        "version" to modVersion,
         "license" to p.get<String>("mod.license"),
         "authors" to p.get<String>("mod.authors"),
         "description" to p.get<String>("mod.description"),
