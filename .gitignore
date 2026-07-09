@@ -33,6 +33,11 @@ replay_pid*
 # Ignore Gradle build output directory
 build
 
+# Stonecutter-generated version node projects (regenerated from the controller)
+/versions/
+/forge/versions/
+/neoforge/versions/
+
 # Ignore Kotlin plugin data
 .kotlin
 

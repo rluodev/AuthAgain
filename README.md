@@ -3,7 +3,7 @@
 [![nightly build](https://img.shields.io/github/actions/workflow/status/rluodev/AuthAgain/gradle-build.yml?branch=main&label=nightly%20build)](https://github.com/rluodev/AuthAgain/actions/workflows/gradle-build.yml)
 [![tests](https://img.shields.io/github/actions/workflow/status/rluodev/AuthAgain/gradle-tests.yml?branch=main&label=tests)](https://github.com/rluodev/AuthAgain/actions/workflows/gradle-tests.yml)
 
-A client-side Minecraft mod (Forge and NeoForge, 1.20.1) that refreshes your
+A client-side Minecraft mod (Forge 1.20.1 and NeoForge 1.21.1) that refreshes your
 Microsoft/Minecraft session and manages multiple accounts without restarting the game.
 
 ## Downloads
@@ -18,11 +18,11 @@ in the nightly build without warning.
 
 ### Requirements
 
-- Minecraft 1.20.1
-- Forge 47.x **or** NeoForge 47.1.x
-- Java 17
+- **Forge:** Minecraft 1.20.1, Forge 47.x, Java 17
+- **NeoForge:** Minecraft 1.21.1, NeoForge 21.1.x, Java 21
 
-Grab the jar matching your loader: `authagain-forge-*.jar` or `authagain-neoforge-*.jar`.
+Use the jar matching your loader: `authagain-forge-*.jar` (1.20.1) or
+`authagain-neoforge-*.jar` (1.21.1).
 
 ## Usage
 
@@ -39,24 +39,30 @@ Accounts are stored as plaintext JSON, which means that anyone who has access to
 
 ## Building from source
 
-Building requires a **JDK 21** toolchain (the produced jars still target Java 17, though).
+Building requires a **JDK 21** toolchain.
 
 ```sh
-./gradlew build
+./gradlew chiseledBuildAndCollect
 ```
 
-The loader jars are written to `forge/build/libs/` and `neoforge/build/libs/`
-(ignore the intermediate `*-dev-shadow.jar`). Build for a specific loader with
-`./gradlew :forge:build` or `./gradlew :neoforge:build`.
-
-AuthAgain is an [Architectury](https://docs.architectury.dev/) multi-loader
-project.
+This builds every loader/version variant and gathers the jars under
+`build/libs/<version>/<loader>/`. To only build a single variant, use
+`./gradlew :forge:1.20.1:build` or `./gradlew :neoforge:1.21.1:build`.
 
 ## Running tests
 
+To run the tests for every loader/version variant:
+
 ```sh
-./gradlew :common:test
+./gradlew chiseledTest
 ```
+
+To run for only a single variant: `./gradlew :forge:1.20.1:test` or `./gradlew :neoforge:1.21.1:test`.
+
+## Acknowledgements
+
+AuthAgain uses [Stonecutter](https://stonecutter.kikugie.dev/) for
+multi-version source processing and [Architectury Loom](https://github.com/architectury/architectury-loom) for loader support.
 
 ## License
 

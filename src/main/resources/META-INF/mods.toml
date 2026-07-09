@@ -1,0 +1,32 @@
+modLoader="javafml"
+loaderVersion="${loader_version_range}"
+license="${license}"
+showAsResourcePack=false
+
+
+[[mods]]
+	modId="${id}"
+	version="${version}"
+	displayName="${name}"
+	updateJSONURL="https://mods.rluo.dev/authagain/versions.json"
+	displayURL="https://mods.rluo.dev"
+	logoFile="logo.png"
+	credits=""
+	authors="${authors}"
+	description='''
+	${description}
+	'''
+
+	[[dependencies.authagain]]
+	modId="forge"
+	mandatory=true
+	versionRange="${forge_version_range}"
+	ordering="NONE"
+	side="BOTH"
+
+	[[dependencies.authagain]]
+	modId="minecraft"
+	mandatory=true
+	versionRange="${minecraft_version_range}"
+	ordering="NONE"
+	side="BOTH"

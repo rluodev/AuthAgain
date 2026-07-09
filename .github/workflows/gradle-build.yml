@@ -38,13 +38,13 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
       - name: Build nightly jar
-        run: ./gradlew build -Pmod_version=nightly-$(date -u +%Y%m%d)-${GITHUB_SHA::7}
+        run: ./gradlew chiseledBuildAndCollect -Pmod_version=nightly-$(date -u +%Y%m%d)-${GITHUB_SHA::7}
       - name: Publish rolling nightly release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete nightly --cleanup-tag --yes || true
-          jars=$(find forge/build/libs neoforge/build/libs -name '*.jar' ! -name '*-dev-shadow.jar' ! -name '*-sources.jar')
+          jars=$(find build/libs -name '*.jar')
           gh release create nightly $jars \
             --title "Nightly ($(date -u +%Y-%m-%d))" \
             --notes "Automated nightly build from commit ${GITHUB_SHA}." \

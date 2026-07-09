@@ -1,0 +1,28 @@
+# Centralized properties. Global values at top; per-loader/version values in the
+# [<loader>."<version>"] tables. Selected by tags(version, loader) in stonecutter.gradle.kts.
+mod.id = "authagain"
+mod.name = "AuthAgain"
+mod.group = "dev.rluo.authagain"
+mod.version = "1.0.1"
+mod.license = "MIT"
+mod.authors = "Ruien Luo"
+mod.description = "Refresh your Microsoft/Minecraft session and manage multiple accounts without restarting the game."
+
+deps.fabric_loader = "0.16.10"
+deps.minecraftauth = "5.0.1"
+deps.junit = "6.0.1"
+deps.assertj = "3.27.7"
+deps.mockito = "5.23.0"
+
+[forge."1.20.1"]
+mod.mc_dep = "[1.20.1,1.21)"
+mod.loader_range = "[47,)"
+mod.deps_range = "[47,)"
+mod.pack_format = "15"
+deps.loader = "47.4.10"
+
+[neoforge."1.21.1"]
+mod.mc_dep = "[1.21.1,1.21.2)"
+mod.loader_range = "[21.1.0,)"
+mod.pack_format = "34"
+deps.loader = "21.1.235"
