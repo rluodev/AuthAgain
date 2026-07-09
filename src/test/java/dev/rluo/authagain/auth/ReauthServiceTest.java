@@ -48,6 +48,16 @@ class ReauthServiceTest {
 	}
 
 	@Test
+	void validateTreatsNullTokenAsInvalid() {
+		assertThat(ReauthService.validate(null).join()).isEqualTo(ReauthService.TokenStatus.INVALID);
+	}
+
+	@Test
+	void validateTreatsBlankTokenAsInvalid() {
+		assertThat(ReauthService.validate("   ").join()).isEqualTo(ReauthService.TokenStatus.INVALID);
+	}
+
+	@Test
 	void extractXuidReadsTheClaim() {
 		JavaAuthManager manager = managerWith(jwt("{\"xuid\":\"2535123\",\"sub\":\"x\"}"), null);
 		assertThat(ReauthService.extractXuid(manager)).isEqualTo("2535123");

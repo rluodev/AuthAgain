@@ -83,4 +83,25 @@ class SessionInjectorTest {
 		assertThat(client.user.getName()).isEqualTo("Bob");
 		assertThat(client.user.getAccessToken()).isEqualTo("access-token-123");
 	}
+
+	private static AuthAccount accountWithSession(JsonObject session) {
+		return new AuthAccount("id-1", "Bob", UUID.randomUUID(), "xuid-9", session, 0L);
+	}
+
+	@Test
+	void accessTokenReadsTheStoredToken() {
+		assertThat(SessionInjector.accessToken(account("tok"))).isEqualTo("tok");
+	}
+
+	@Test
+	void accessTokenIsNullWhenSessionHasNoMinecraftToken() {
+		assertThat(SessionInjector.accessToken(accountWithSession(new JsonObject()))).isNull();
+	}
+
+	@Test
+	void accessTokenIsNullWhenMinecraftTokenHasNoTokenField() {
+		JsonObject session = new JsonObject();
+		session.add("minecraftToken", new JsonObject());
+		assertThat(SessionInjector.accessToken(accountWithSession(session))).isNull();
+	}
 }
