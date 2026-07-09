@@ -39,6 +39,8 @@ Accounts are stored as plaintext JSON, which means that anyone who has access to
 
 ## Building from source
 
+Building requires a **JDK 21** toolchain (the produced jars still target Java 17, though).
+
 ```sh
 ./gradlew build
 ```
