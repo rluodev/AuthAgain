@@ -1,5 +1,8 @@
 @file:Suppress("UnstableApiUsage")
 
+import java.nio.file.FileSystems
+import java.nio.file.Files
+
 plugins {
     id("dev.architectury.loom")
     id("com.gradleup.shadow")
@@ -10,7 +13,7 @@ val minecraft: String = stonecutter.current.version
 val modVersion: String = (findProperty("mod_version") as String?) ?: p.get<String>("mod.version")
 
 group = p.get<String>("mod.group")
-version = "$modVersion+$minecraft"
+version = "$minecraft-$modVersion"
 base {
     archivesName.set("${p.get<String>("mod.id")}-forge")
 }
@@ -79,7 +82,8 @@ tasks.shadowJar {
         exclude(dependency("com.google.errorprone:error_prone_annotations"))
     }
     exclude("module-info.class")
-    exclude("META-INF/versions/**/module-info.class")
+    // Drop relocated deps' versioned module descriptors; they name packages that no longer exist.
+    exclude("META-INF/versions/**")
     exclude("META-INF/maven/**")
     exclude("META-INF/proguard/**")
     exclude("fabric.mod.json", "architectury.common.json")
@@ -91,6 +95,8 @@ tasks.remapJar {
     input = tasks.shadowJar.get().archiveFile
     archiveClassifier = null
     dependsOn(tasks.shadowJar)
+    // Shadow flags the jar Multi-Release from the bundled deps so we strip that
+    doLast { stripMultiRelease(archiveFile.get().asFile) }
 }
 
 tasks.processResources {
@@ -115,4 +121,17 @@ tasks.register<Copy>("buildAndCollect") {
     from(tasks.remapJar.get().archiveFile)
     into(rootProject.layout.buildDirectory.file("libs/$modVersion/forge"))
     dependsOn("build")
+}
+
+// Removes the Multi-Release manifest attribute that shadow adds from the bundled deps.
+fun stripMultiRelease(jar: java.io.File) {
+    val env = mapOf<String, String>()
+    FileSystems.newFileSystem(jar.toPath(), env).use { fs ->
+        val manifest = fs.getPath("META-INF/MANIFEST.MF")
+        if (Files.exists(manifest)) {
+            val kept = Files.readAllLines(manifest)
+                .filterNot { it.startsWith("Multi-Release", ignoreCase = true) }
+            Files.write(manifest, (kept.joinToString("\r\n") + "\r\n").toByteArray())
+        }
+    }
 }
