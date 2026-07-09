@@ -1,0 +1,5 @@
+accessWidener	v2	named
+
+# Make Minecraft.user accessible and mutable so SessionInjector can swap the active session at runtime.
+accessible	field	net/minecraft/client/Minecraft	user	Lnet/minecraft/client/User;
+mutable	field	net/minecraft/client/Minecraft	user	Lnet/minecraft/client/User;

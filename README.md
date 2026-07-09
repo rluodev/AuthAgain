@@ -3,8 +3,8 @@
 [![nightly build](https://img.shields.io/github/actions/workflow/status/rluodev/AuthAgain/gradle-build.yml?branch=main&label=nightly%20build)](https://github.com/rluodev/AuthAgain/actions/workflows/gradle-build.yml)
 [![tests](https://img.shields.io/github/actions/workflow/status/rluodev/AuthAgain/gradle-tests.yml?branch=main&label=tests)](https://github.com/rluodev/AuthAgain/actions/workflows/gradle-tests.yml)
 
-A client-side Minecraft Forge 1.20.1 mod that refreshes your Microsoft/Minecraft
-session and manages multiple accounts without restarting the game.
+A client-side Minecraft mod (Forge and NeoForge, 1.20.1) that refreshes your
+Microsoft/Minecraft session and manages multiple accounts without restarting the game.
 
 ## Downloads
 
@@ -19,8 +19,10 @@ in the nightly build without warning.
 ### Requirements
 
 - Minecraft 1.20.1
-- Forge 47.x
+- Forge 47.x **or** NeoForge 47.1.x
 - Java 17
+
+Grab the jar matching your loader: `authagain-forge-*.jar` or `authagain-neoforge-*.jar`.
 
 ## Usage
 
@@ -41,12 +43,17 @@ Accounts are stored as plaintext JSON, which means that anyone who has access to
 ./gradlew build
 ```
 
-The mod jar is written to `build/libs/`.
+The loader jars are written to `forge/build/libs/` and `neoforge/build/libs/`
+(ignore the intermediate `*-dev-shadow.jar`). Build for a specific loader with
+`./gradlew :forge:build` or `./gradlew :neoforge:build`.
+
+AuthAgain is an [Architectury](https://docs.architectury.dev/) multi-loader
+project.
 
 ## Running tests
 
 ```sh
-./gradlew test
+./gradlew :common:test
 ```
 
 ## License

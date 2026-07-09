@@ -25,6 +25,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${GITHUB_REF_NAME}" build/libs/*.jar \
+          jars=$(find forge/build/libs neoforge/build/libs -name '*.jar' ! -name '*-dev-shadow.jar' ! -name '*-sources.jar')
+          gh release create "${GITHUB_REF_NAME}" $jars \
             --title "${GITHUB_REF_NAME}" \
             --generate-notes

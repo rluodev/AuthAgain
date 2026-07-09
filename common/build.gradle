@@ -1,0 +1,30 @@
+architectury {
+    common 'forge'
+}
+
+loom {
+    accessWidenerPath = file('src/main/resources/authagain.accesswidener')
+}
+
+dependencies {
+    // Compile against the auth library
+    compileOnly "net.raphimc:MinecraftAuth:${minecraftauth_version}"
+
+    // javax.annotation.Nullable
+    compileOnly "com.google.code.findbugs:jsr305:3.0.2"
+
+    testImplementation "org.junit.jupiter:junit-jupiter:${junit_version}"
+    testImplementation "org.assertj:assertj-core:${assertj_version}"
+    testImplementation "org.mockito:mockito-core:${mockito_version}"
+    testImplementation "org.mockito:mockito-junit-jupiter:${mockito_version}"
+    testImplementation "net.raphimc:MinecraftAuth:${minecraftauth_version}"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}
+
+test {
+    useJUnitPlatform()
+    testLogging {
+        events 'passed', 'skipped', 'failed'
+        exceptionFormat 'full'
+    }
+}

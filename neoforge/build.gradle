@@ -1,0 +1,88 @@
+plugins {
+    id 'com.github.johnrengelman.shadow'
+}
+
+architectury {
+    platformSetupLoomIde()
+    forge()
+}
+
+def accessWidenerFile = rootProject.file('common/src/main/resources/authagain.accesswidener')
+
+loom {
+    accessWidenerPath = accessWidenerFile
+
+    forge {
+        convertAccessWideners = true
+        extraAccessWideners.add accessWidenerFile.name
+    }
+
+    runs {
+        client { }
+        server { }
+    }
+}
+
+configurations {
+    common
+    shadowBundle
+    compileClasspath.extendsFrom common
+    runtimeClasspath.extendsFrom common
+    developmentForge.extendsFrom common
+}
+
+dependencies {
+    // NeoForge for 1.20.1 ships as a forge-style artifact, consumed by loom's forge platform.
+    forge "net.neoforged:forge:${neoforge_version}"
+
+    common(project(path: ':common', configuration: 'namedElements')) { transitive false }
+    shadowBundle project(path: ':common', configuration: 'transformProductionForge')
+
+    // Auth library: compile against + bundle (relocated) into the jar.
+    common("net.raphimc:MinecraftAuth:${minecraftauth_version}") { transitive = true }
+    shadowBundle("net.raphimc:MinecraftAuth:${minecraftauth_version}") { transitive = true }
+}
+
+processResources {
+    def expandProps = [
+            minecraft_version      : minecraft_version,
+            minecraft_version_range: minecraft_version_range,
+            forge_version          : neoforge_version,
+            forge_version_range    : neoforge_version_range,
+            loader_version_range   : neoforge_loader_version_range,
+            mod_id                 : mod_id,
+            mod_name               : mod_name,
+            mod_license            : mod_license,
+            mod_version            : mod_version,
+            mod_authors            : mod_authors,
+            mod_description        : mod_description,
+    ]
+    inputs.properties expandProps
+    filesMatching('META-INF/mods.toml') {
+        expand expandProps
+    }
+}
+
+shadowJar {
+    configurations = [project.configurations.shadowBundle]
+    archiveClassifier = 'dev-shadow'
+
+    relocate 'net.raphimc.minecraftauth', 'dev.rluo.authagain.shaded.minecraftauth'
+    relocate 'net.lenni0451.commons', 'dev.rluo.authagain.shaded.lenni0451.commons'
+    relocate 'com.google.gson', 'dev.rluo.authagain.shaded.gson'
+
+    dependencies {
+        exclude(dependency('com.google.errorprone:error_prone_annotations'))
+    }
+
+    exclude 'module-info.class'
+    exclude 'META-INF/versions/**/module-info.class'
+    exclude 'META-INF/maven/**'
+    exclude 'META-INF/proguard/**'
+}
+
+remapJar {
+    inputFile.set shadowJar.archiveFile
+    dependsOn shadowJar
+    archiveClassifier = null
+}
