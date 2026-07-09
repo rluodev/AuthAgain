@@ -1,0 +1,94 @@
+name: Gradle Build Nightly
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+      - name: Setup JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: 17
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+      - name: Build with Gradle
+        run: ./gradlew build
+
+  dependency-submission:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+    - uses: actions/checkout@v6
+    - name: Set up JDK 17
+      uses: actions/setup-java@v5
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    # Generates and submits a dependency graph, enabling Dependabot Alerts for all project dependencies.
+    # See: https://github.com/gradle/actions/blob/main/dependency-submission/README.md
+    - name: Generate and submit dependency graph
+      uses: gradle/actions/dependency-submission@v6
+
+  publish-nightly:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+      - name: Setup JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: 17
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+      - name: Build nightly jar and coverage report
+        run: ./gradlew build -Pmod_version=1.0.0-nightly-$(date -u +%Y%m%d)-${GITHUB_SHA::7}
+      - name: Export Jacoco coverage summary
+        run: |
+          python3 - <<'PY'
+          import json
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+
+          xml_path = Path('build/reports/jacoco/test/jacocoTestReport.xml')
+          root = ET.parse(xml_path).getroot()
+          counter = root.find("./counter[@type='LINE']")
+          if counter is None:
+              raise SystemExit(f'Could not find LINE counter in {xml_path}')
+
+          covered = int(counter.attrib['covered'])
+          missed = int(counter.attrib['missed'])
+          total = covered + missed
+          percent = 100.0 if total == 0 else (covered / total) * 100.0
+
+          coverage = {
+              'totals': {
+                  'percent_covered_display': round(percent, 1),
+              }
+          }
+          Path('coverage.json').write_text(json.dumps(coverage), encoding='utf-8')
+          PY
+      - name: Update Coverage Badge
+        uses: we-cli/coverage-badge-action@main
+      - name: Publish rolling nightly release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete nightly --cleanup-tag --yes || true
+          gh release create nightly build/libs/*.jar \
+            --title "Nightly ($(date -u +%Y-%m-%d))" \
+            --notes "Automated nightly build from commit ${GITHUB_SHA}." \
+            --prerelease \
+            --target "${GITHUB_SHA}"
