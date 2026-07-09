@@ -13,13 +13,13 @@ import com.google.gson.JsonObject;
  * <p>
  * {@code displayName} is used to display a friendly name to the user
  * <p>
- * {@code uuid} tracks the remote minecraft account without regard to username
+ * {@code uuid} tracks the remote minecraft account by uuid
  * <p>
  * {@code xuid} is the Xbox user ID, needed to build the in-game session
  * <p>
  * {@code session} is the JSON produced by {@link ReauthService#serialize}
  * <p>
- * {@code lastRefreshedAt} tracks when (in millis) the record was last updated
+ * {@code lastRefreshedAt} when (in millis) the record was last updated
  * <p>
  * {@code skinUrl} is a cached texture URL for the account's head, or {@code null}
  * if it has not been resolved yet, so the account screen can skip re-querying the
@@ -39,7 +39,7 @@ public record AuthAccount(String id, String displayName, UUID uuid, String xuid,
 	}
 
 	/**
-	 * Generates the id and current time, then passes to the base constructor.
+	 * Generates the id and current time then calls the base constructor.
 	 */
 	public AuthAccount(String displayName, UUID uuid, String xuid, JsonObject session) {
 		this(UUID.randomUUID().toString(), displayName, uuid, xuid, session, System.currentTimeMillis(), null);
@@ -49,8 +49,6 @@ public record AuthAccount(String id, String displayName, UUID uuid, String xuid,
 	 * Returns a copy with an updated display name, xuid, session, and timestamp.
 	 * <p>
 	 * The display name is refreshed alongside the session because a Minecraft username can change between logins.
-	 * The cached {@link #skinUrl()} is dropped so the refreshed account re-resolves its skin.
-	 * <p>
 	 * @return a new {@link AuthAccount} so a silent refresh can replace the stored account without mutation.
 	 */
 	public AuthAccount withSession(String newDisplayName, String newXuid, JsonObject newSession, long newLastRefreshedAt) {
@@ -58,7 +56,7 @@ public record AuthAccount(String id, String displayName, UUID uuid, String xuid,
 	}
 
 	/**
-	 * Returns a copy carrying the given cached skin texture URL.
+	 * Returns a copy carrying the cached skin texture URL.
 	 */
 	public AuthAccount withSkinUrl(String newSkinUrl) {
 		return new AuthAccount(id, displayName, uuid, xuid, session, lastRefreshedAt, newSkinUrl);

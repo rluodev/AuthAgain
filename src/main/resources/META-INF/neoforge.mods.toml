@@ -1,5 +1,5 @@
 modLoader="javafml"
-loaderVersion="${loader_version_range}"
+loaderVersion="${fml_version_range}"
 license="${license}"
 showAsResourcePack=false
 
@@ -18,15 +18,15 @@ showAsResourcePack=false
 	'''
 
 	[[dependencies.authagain]]
-	modId="forge"
-	mandatory=true
-	versionRange="${forge_version_range}"
+	modId="neoforge"
+	type="required"
+	versionRange="${loader_version_range}"
 	ordering="NONE"
 	side="BOTH"
 
 	[[dependencies.authagain]]
 	modId="minecraft"
-	mandatory=true
+	type="required"
 	versionRange="${minecraft_version_range}"
 	ordering="NONE"
 	side="BOTH"

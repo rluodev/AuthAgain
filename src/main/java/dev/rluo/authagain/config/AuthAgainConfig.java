@@ -1,29 +1,15 @@
 package dev.rluo.authagain.config;
 
-import dev.rluo.authagain.AuthAgainMod;
-import net.minecraft.world.item.Item;
-import net.minecraftforge.common.ForgeConfigSpec;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.event.config.ModConfigEvent;
-import net.minecraftforge.fml.loading.FMLPaths;
+/**
+ * <strong>AuthAgainConfig</strong><br>
+ * Loader-agnostic holder for config values. Each loader owns its config spec
+ * and writes the resolved values here on load.
+ */
+public final class AuthAgainConfig {
 
-import java.util.Set;
+	/** Whether to save accounts to disk. */
+	public static volatile boolean persistAccounts = true;
 
-@Mod.EventBusSubscriber(modid = AuthAgainMod.MODID, bus = Mod.EventBusSubscriber.Bus.MOD)
-public class AuthAgainConfig {
-	private static final ForgeConfigSpec.Builder BUILDER = new ForgeConfigSpec.Builder();
-
-	private static final ForgeConfigSpec.BooleanValue PERSIST_ACCOUNTS = BUILDER
-			.comment("Whether to save accounts to disk")
-			.define("persistAccounts", true);
-
-	public static final ForgeConfigSpec SPEC = BUILDER.build();
-
-	public static boolean persistAccounts;
-
-	@SubscribeEvent
-	static void onLoad(final ModConfigEvent event) {
-		persistAccounts = PERSIST_ACCOUNTS.get();
+	private AuthAgainConfig() {
 	}
 }

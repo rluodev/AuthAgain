@@ -8,6 +8,7 @@ import java.util.concurrent.CompletableFuture;
 import javax.annotation.Nullable;
 
 import com.mojang.authlib.GameProfile;
+//? if <1.21
 import com.mojang.authlib.minecraft.MinecraftProfileTexture;
 import com.mojang.authlib.minecraft.MinecraftSessionService;
 
@@ -80,7 +81,7 @@ public class AccountManagerScreen extends Screen {
 		removeButton = addRenderableWidget(Button.builder(Component.translatable("gui.authagain.row.remove"),
 				btn -> withSelection(this::onRemoveClicked)).bounds(barX + 208, topY, 100, 20).build());
 		addRenderableWidget(Button.builder(Component.translatable("gui.authagain.add"),
-				btn -> minecraft.setScreen(new DeviceCodeScreen(this, null)))
+				btn -> minecraft.setScreen(new DeviceCodeScreen(this)))
 				.bounds(barX, bottomY, 152, 20).build());
 		addRenderableWidget(Button.builder(CommonComponents.GUI_DONE, btn -> onClose())
 				.bounds(barX + 156, bottomY, 152, 20).build());
@@ -150,7 +151,7 @@ public class AccountManagerScreen extends Screen {
 		ReauthService.silentRefresh(account.session()).whenComplete((manager, throwable) -> minecraft.execute(() -> {
 			busy = false;
 			if (throwable != null) {
-				minecraft.setScreen(new DeviceCodeScreen(this, account));
+				minecraft.setScreen(new DeviceCodeScreen(this));
 				return;
 			}
 			AuthAccount refreshed = ReauthService.toAccount(account, manager);
@@ -201,6 +202,7 @@ public class AccountManagerScreen extends Screen {
 		if (heads.containsKey(uuid)) {
 			return;
 		}
+		//? if <1.21 {
 		heads.put(uuid, DefaultPlayerSkin.getDefaultSkin(uuid));
 
 		if (account.skinUrl() != null) {
@@ -224,13 +226,35 @@ public class AccountManagerScreen extends Screen {
 				cacheSkinUrl(uuid, skin.getUrl());
 			}
 		}, minecraft);
+		//?} else {
+		/*heads.put(uuid, DefaultPlayerSkin.get(uuid).texture());
+		MinecraftSessionService sessionService = minecraft.getMinecraftSessionService();
+		GameProfile profile = new GameProfile(uuid, account.displayName());
+		CompletableFuture.supplyAsync(() -> {
+			try {
+				return sessionService.fetchProfile(uuid, false).profile();
+			} catch (Exception e) {
+				AuthAgainMod.LOGGER.debug("[AuthAgain] Could not resolve skin for {}.", uuid, e);
+				return profile;
+			}
+		}, Util.backgroundExecutor())
+				.thenComposeAsync(filled -> minecraft.getSkinManager().getOrLoad(filled), minecraft)
+				.thenAcceptAsync(skin -> {
+					if (skin != null && skin.textureUrl() != null) {
+						heads.put(uuid, skin.texture());
+						cacheSkinUrl(uuid, skin.textureUrl());
+					}
+				}, minecraft);
+		*///?}
 	}
 
+	//? if <1.21 {
 	/** Registers a head texture from its Mojang texture URL, must run on the render thread. */
 	private ResourceLocation registerSkin(String skinUrl) {
 		MinecraftProfileTexture texture = new MinecraftProfileTexture(skinUrl, java.util.Map.of());
 		return minecraft.getSkinManager().registerTexture(texture, MinecraftProfileTexture.Type.SKIN);
 	}
+	//?}
 
 	/** Stores a resolved skin URL onto the account so later opens skip the fetch. */
 	private void cacheSkinUrl(UUID uuid, String skinUrl) {
@@ -242,7 +266,11 @@ public class AccountManagerScreen extends Screen {
 
 	/** The cached head skin for an account, or the default skin while it loads. */
 	ResourceLocation headFor(UUID uuid) {
+		//? if <1.21 {
 		return heads.getOrDefault(uuid, DefaultPlayerSkin.getDefaultSkin(uuid));
+		//?} else {
+		/*return heads.getOrDefault(uuid, DefaultPlayerSkin.get(uuid).texture());*/
+		//?}
 	}
 
 	/**
@@ -270,10 +298,15 @@ public class AccountManagerScreen extends Screen {
 	@Override
 	public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
 		updateButtons();
-		this.renderBackground(g);
 		hoverTooltip = null;
+		//? if <1.21 {
+		this.renderBackground(g);
 		list.render(g, mouseX, mouseY, partialTick);
 		super.render(g, mouseX, mouseY, partialTick);
+		//?} else {
+		/*super.render(g, mouseX, mouseY, partialTick);
+		list.render(g, mouseX, mouseY, partialTick);*/
+		//?}
 		g.drawCenteredString(font, title, width / 2, 12, 0xFFFFFF);
 		if (AuthAgainMod.globalAccountStore.list().isEmpty()) {
 			g.drawCenteredString(font, Component.translatable("gui.authagain.accounts.empty"),
@@ -292,9 +325,13 @@ public class AccountManagerScreen extends Screen {
 	/** Scrolling container of accounts. */
 	private class AccountList extends ObjectSelectionList<AccountRowWidget> {
 		AccountList(Minecraft mc) {
+			//? if <1.21 {
 			super(mc, AccountManagerScreen.this.width, AccountManagerScreen.this.height, 32,
 					AccountManagerScreen.this.height - 64, 24);
 			setRenderBackground(false);
+			//?} else {
+			/*super(mc, AccountManagerScreen.this.width, AccountManagerScreen.this.height - 96, 32, 24);*/
+			//?}
 		}
 
 		@Override

@@ -25,7 +25,7 @@ import dev.rluo.authagain.config.AuthAgainConfig;
  * <strong>AccountStore</strong><br>
  * This class manages {@code config/authagain/accounts.json}.
  * <p>
- * {@code accounts.json} is in the following format so the accounts can survive a restart:
+ * {@code accounts.json} is in the following format:
  * <pre>
  * {
  *   "activeUuid": "&lt;localId or null&gt;",
@@ -46,8 +46,8 @@ public class AccountStore {
 	}
 
 	/**
-	 * Deserializes {@code accounts.json} from disk into the
-	 * {@link #_accounts} list and {@link #_activeUuid} pointer.
+	 * Deserializes {@code accounts.json} from disk into
+	 * {@link #_accounts} and {@link #_activeUuid}.
 	 * <p>
 	 * @implNote An empty/unparseable file is treated as non-existent and we
 	 * just create a new store file so that we don't impede startup.
@@ -95,7 +95,7 @@ public class AccountStore {
 	}
 
 	/**
-	 * Reserializes the in-memory account list and active account info back to
+	 * Reserializes _accounts and active account info back to
 	 * {@code accounts.json}.
 	 * <p>
 	 * We don't save if {@link AuthAgainConfig#persistAccounts} is false.

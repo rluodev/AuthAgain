@@ -23,9 +23,6 @@ public class DeviceCodeScreen extends Screen {
 	private enum State { STARTING, WAITING, ERROR }
 
 	private final Screen parent;
-	/** The account being reauthenticated, or {@code null} when adding a new one. */
-	@Nullable
-	private final AuthAccount existing;
 
 	private State state = State.STARTING;
 	private boolean loginStarted;
@@ -39,10 +36,9 @@ public class DeviceCodeScreen extends Screen {
 	/** Clock time when the copy button should go back from "Copied!" to original label, or 0 when idle. */
 	private long copyResetAtMs;
 
-	public DeviceCodeScreen(Screen parent, @Nullable AuthAccount existing) {
+	public DeviceCodeScreen(Screen parent) {
 		super(Component.translatable("gui.authagain.devicecode.title"));
 		this.parent = parent;
-		this.existing = existing;
 	}
 
 	@Override
@@ -107,9 +103,10 @@ public class DeviceCodeScreen extends Screen {
 			return;
 		}
 
-		AuthAccount account = existing == null
-				? ReauthService.toAccount(manager)
-				: ReauthService.toAccount(existing, manager);
+		// The account that actually signed in may differ from the one we set out to
+		// reauth (the user can pick the wrong Microsoft account), so dedupe against
+		// the real logged-in uuid rather than the account we started from.
+		AuthAccount account = ReauthService.resolveLogin(AuthAgainMod.globalAccountStore, manager);
 		AuthAgainMod.globalAccountStore.add(account);
 		if (parent instanceof AccountManagerScreen accountManager) {
 			accountManager.markValid(account.uuid());
@@ -119,7 +116,11 @@ public class DeviceCodeScreen extends Screen {
 
 	@Override
 	public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+		//? if <1.21 {
 		this.renderBackground(g);
+		//?} else {
+		/*super.render(g, mouseX, mouseY, partialTick);*/
+		//?}
 		g.drawCenteredString(font, title, width / 2, 40, 0xFFFFFF);
 
 		switch (state) {
@@ -147,6 +148,7 @@ public class DeviceCodeScreen extends Screen {
 			}
 		}
 
+		//? if <1.21
 		super.render(g, mouseX, mouseY, partialTick);
 	}
 

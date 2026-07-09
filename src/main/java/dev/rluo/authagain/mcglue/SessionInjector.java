@@ -25,8 +25,13 @@ public class SessionInjector {
 	 * both populated during login/refresh).
 	 */
 	public static User buildUser(AuthAccount account) {
+		//? if <1.21 {
 		return new User(account.displayName(), account.uuid().toString(), accessToken(account),
 				Optional.of(account.xuid()), Optional.empty(), User.Type.MSA);
+		//?} else {
+		/*return new User(account.displayName(), account.uuid(), accessToken(account),
+				Optional.of(account.xuid()), Optional.empty(), User.Type.MSA);*/
+		//?}
 	}
 
 	/** The Minecraft access token stored in the account's session, or null if absent. */
