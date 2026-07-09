@@ -1,6 +1,6 @@
 # AuthAgain
 
-[![build](https://img.shields.io/github/actions/workflow/status/rluodev/AuthAgain/gradle-build.yml?branch=main&label=build)](https://github.com/rluodev/AuthAgain/actions/workflows/gradle-build.yml)
+[![nightly build](https://img.shields.io/github/actions/workflow/status/rluodev/AuthAgain/gradle-build.yml?branch=main&label=nightly%20build)](https://github.com/rluodev/AuthAgain/actions/workflows/gradle-build.yml)
 [![tests](https://img.shields.io/github/actions/workflow/status/rluodev/AuthAgain/gradle-tests.yml?branch=main&label=tests)](https://github.com/rluodev/AuthAgain/actions/workflows/gradle-tests.yml)
 
 A client-side Minecraft Forge 1.20.1 mod that refreshes your Microsoft/Minecraft
