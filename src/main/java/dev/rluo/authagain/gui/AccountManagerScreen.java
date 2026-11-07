@@ -40,6 +40,7 @@ public class AccountManagerScreen extends Screen {
 
 	private final Screen parent;
 	private AccountList list;
+	private Button configButton;
 	private Button setActiveButton;
 	private Button reauthButton;
 	private Button removeButton;
@@ -70,6 +71,11 @@ public class AccountManagerScreen extends Screen {
 			checkValidity(account);
 		}
 		addWidget(list);
+		Component config = Component.translatable("gui.authagain.config");
+		int configWidth = font.width(config) + 20;
+		configButton = addRenderableWidget(Button.builder(config,
+				btn -> minecraft.setScreen(new AuthAgainConfigScreen(this)))
+				.bounds(width - configWidth - 5, 5, configWidth, 20).build());
 
 		int barX = width / 2 - 154;
 		int topY = height - 52;
@@ -279,6 +285,7 @@ public class AccountManagerScreen extends Screen {
 	 * set active is disabled if the selected row is already active
 	 */
 	private void updateButtons() {
+		configButton.active = !busy;
 		AuthAccount selected = selectedAccount();
 		if (selected != lastSelected) {
 			lastSelected = selected;

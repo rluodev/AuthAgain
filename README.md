@@ -31,11 +31,24 @@ top-left corner. From there, you can add accounts, reauthenticate, set an accoun
 
 ## Configuration
 
-You can find the configuration file in `config/authagain-client.toml`, and it offers one option:
+You can find the configuration file in `config/authagain-client.toml`:
 
-- `persistAccounts` (default `true`) - save accounts to `config/authagain/accounts.json`. If you would prefer to not save accounts, set this option to `false`.
+- `persistAccounts` (default `true`) - save accounts between game sessions. Set this to `false` to keep accounts in memory only.
+- `encryptAccounts` (default `true`) - encrypt saved accounts. Set this to `false` to use the original plaintext JSON format.
 
-Accounts are stored as plaintext JSON, which means that anyone who has access to your device and files will have your accounts.
+## Account storage
+
+AuthAgain saves encrypted accounts to `config/authagain/accounts.enc`. On
+Windows, it tries to protect them with your Windows profile first. Otherwise,
+it uses the available device identifiers. You may need to sign in again after
+moving the instance to another computer or changing hardware.
+
+If encryption is disabled or fails, AuthAgain uses the legacy `accounts.json`
+format. The Multiplayer screen shows a red `(UNENCRYPTED)` next to your name.
+Hover over it for details. 
+
+**DO NOT share the instance while this warning isvisible.**
+Set `persistAccounts` to `false` to stop saving accounts to disk.
 
 ## Building from source
 

@@ -6,6 +6,7 @@ import java.nio.file.Path;
 
 import dev.rluo.authagain.AuthAgainMod;
 import dev.rluo.authagain.auth.AccountStore;
+import dev.rluo.authagain.config.AuthAgainConfig;
 
 /**
  * <strong>AuthAgainClient</strong><br>
@@ -17,7 +18,7 @@ public final class AuthAgainClient {
 	private AuthAgainClient() {
 	}
 
-	public static void init(Path configDir) {
+	public static synchronized void init(Path configDir) {
 		Path dir = configDir.resolve(AuthAgainMod.MODID);
 		try {
 			Files.createDirectories(dir);
@@ -30,5 +31,15 @@ public final class AuthAgainClient {
 			throw new IllegalStateException("[AuthAgain] The global account store was already initialized.");
 		}
 		AuthAgainMod.globalAccountStore = new AccountStore(dir.resolve("accounts.json").toString());
+	}
+
+	public static synchronized void applyConfig(boolean persistAccounts, boolean encryptAccounts) {
+		AccountStore store = AuthAgainMod.globalAccountStore;
+		if (store == null) {
+			AuthAgainConfig.persistAccounts = persistAccounts;
+			AuthAgainConfig.encryptAccounts = encryptAccounts;
+		} else {
+			store.applyConfig(persistAccounts, encryptAccounts);
+		}
 	}
 }

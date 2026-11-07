@@ -1,16 +1,16 @@
 package dev.rluo.authagain.auth;
 
 import java.io.IOException;
-import java.io.Reader;
-import java.io.Writer;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.GeneralSecurityException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
-import static java.nio.file.StandardCopyOption.*;
+
+import javax.annotation.Nullable;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -23,9 +23,10 @@ import dev.rluo.authagain.config.AuthAgainConfig;
 
 /**
  * <strong>AccountStore</strong><br>
- * This class manages {@code config/authagain/accounts.json}.
+ * Manages device-bound accounts in {@code config/authagain}, with legacy JSON
+ * support when encryption is disabled or unavailable.
  * <p>
- * {@code accounts.json} is in the following format:
+ * The decrypted account document is in the following format:
  * <pre>
  * {
  *   "activeUuid": "&lt;localId or null&gt;",
@@ -35,104 +36,255 @@ import dev.rluo.authagain.config.AuthAgainConfig;
  */
 public class AccountStore {
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+	private static final long MAX_STORAGE_REVISION = Long.MAX_VALUE - 1;
 
-	private final String _accountStoreLocation;
+	private final EncryptedAccountStorage _storage;
 	private List<AuthAccount> _accounts = new ArrayList<>();
 	private volatile UUID _activeUuid;
+	private long _storageRevision;
+	private UnencryptedReason _unencryptedReason;
+
+	public enum UnencryptedReason {
+		DISABLED, NO_DEVICE_ID, ENCRYPTION_FAILED, WRITE_FAILED, LEGACY_FILES
+	}
 
 	public AccountStore(String accountStoreLocation) {
-		_accountStoreLocation = accountStoreLocation;
+		this(Paths.get(accountStoreLocation), new DeviceKey());
+	}
+
+	AccountStore(Path accountStoreLocation, List<DeviceIdentity> identities) {
+		this(accountStoreLocation, new DeviceKey(identities));
+	}
+
+	private AccountStore(Path accountStoreLocation, DeviceKey keys) {
+		_storage = new EncryptedAccountStorage(accountStoreLocation, keys);
 		load();
 	}
 
 	/**
-	 * Deserializes {@code accounts.json} from disk into
-	 * {@link #_accounts} and {@link #_activeUuid}.
-	 * <p>
-	 * @implNote An empty/unparseable file is treated as non-existent and we
-	 * just create a new store file so that we don't impede startup.
+	 * Applies changes to account persistence while keeping the current session in memory.
 	 */
-	public synchronized void load() {
-		Path path = Paths.get(_accountStoreLocation);
-		if (!Files.exists(path)) {
-			_accounts = new ArrayList<>();
-			_activeUuid = null;
-			return;
-		} else if (!AuthAgainConfig.persistAccounts) {
-			_accounts = new ArrayList<>();
-			_activeUuid = null;
-			try {
-				Files.delete(path);
-			} catch (IOException e) {
-				AuthAgainMod.LOGGER.error("AuthAgain could not delete {} when persistAccounts was set to false.", path, e);
-			}
+	public synchronized void applyConfig(boolean persistAccounts, boolean encryptAccounts) {
+		boolean wasPersisting = AuthAgainConfig.persistAccounts;
+		if (wasPersisting == persistAccounts && AuthAgainConfig.encryptAccounts == encryptAccounts) {
 			return;
 		}
-
-		try (Reader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
-			JsonObject root = GSON.fromJson(reader, JsonObject.class);
-			if (root == null) {
-				throw new IllegalStateException("accounts.json is empty or not a JSON object");
-			}
-
-			List<AuthAccount> parsed = new ArrayList<>();
-			if (root.has("accounts") && root.get("accounts").isJsonArray()) {
-				for (JsonElement element : root.getAsJsonArray("accounts")) {
-					parsed.add(fromJson(element.getAsJsonObject()));
-				}
-			}
-
-			_accounts = parsed;
-			_activeUuid = (root.has("activeUuid") && !root.get("activeUuid").isJsonNull())
-					? UUID.fromString(root.get("activeUuid").getAsString())
-					: null;
-			AuthAgainMod.LOGGER.info("[AuthAgain] Read accounts from disk");
-		} catch (Exception e) {
-			AuthAgainMod.LOGGER.error("[AuthAgain] Failed to read {}, recreating accounts.json", path, e);
-			_accounts = new ArrayList<>();
-			_activeUuid = null;
+		AuthAgainConfig.persistAccounts = persistAccounts;
+		AuthAgainConfig.encryptAccounts = encryptAccounts;
+		if (persistAccounts) {
+			save();
+		} else if (wasPersisting) {
+			clearSavedAccounts();
 		}
 	}
 
 	/**
-	 * Reserializes _accounts and active account info back to
-	 * {@code accounts.json}.
+	 * Loads persisted accounts into
+	 * {@link #_accounts} and {@link #_activeUuid}.
 	 * <p>
-	 * We don't save if {@link AuthAgainConfig#persistAccounts} is false.
+	 * Removes legacy JSON only after a verified encrypted write.
+	 */
+	public synchronized void load() {
+		_accounts = new ArrayList<>();
+		_activeUuid = null;
+		_storageRevision = 0;
+		_unencryptedReason = null;
+		if (!AuthAgainConfig.persistAccounts) {
+			clearSavedAccounts();
+			return;
+		}
+
+		boolean readEncrypted = false;
+		try {
+			byte[] document = _storage.read();
+			if (document != null) {
+				readAccounts(document, false);
+				readEncrypted = true;
+			}
+		} catch (Exception e) {
+			_storage.markUnreadable();
+			logStorageFailure("read encrypted accounts", e);
+		}
+
+		boolean readLegacy = false;
+		try {
+			for (byte[] document : _storage.readLegacy()) {
+				try {
+					readAccounts(document, true);
+					readLegacy = true;
+				} catch (Exception e) {
+					logStorageFailure("read legacy accounts", e);
+				}
+			}
+		} catch (Exception e) {
+			logStorageFailure("read legacy accounts", e);
+		}
+		if (AuthAgainConfig.encryptAccounts ? readLegacy : readEncrypted) {
+			save();
+		}
+	}
+
+	private void clearSavedAccounts() {
+		_unencryptedReason = null;
+		try {
+			_storage.clear();
+		} catch (IOException | RuntimeException e) {
+			logStorageFailure("clear account storage", e);
+		}
+	}
+
+	/**
+	 * Saves accounts using encryption when possible.
 	 */
 	public synchronized void save() {
 		if (!AuthAgainConfig.persistAccounts) {
 			return;
 		}
-
-		Path path = Paths.get(_accountStoreLocation);
+		long revision = Math.min(_storageRevision + 1, MAX_STORAGE_REVISION);
+		byte[] document = serializeAccounts(revision);
 		try {
-			Path parent = path.getParent();
-			if (parent == null) {
-				AuthAgainMod.LOGGER.error("[AuthAgain] Could not find a parent folder for the account store file. Accounts will not be persisted. Please report this error to the mod maintainer.");
+			_unencryptedReason = null;
+			if (AuthAgainConfig.encryptAccounts && saveEncrypted(document)) {
+				_storageRevision = revision;
 				return;
 			}
-			Files.createDirectories(parent);
-			Path tmpPath = parent.resolve("accounts.json.tmp");
-
-			JsonArray accounts = new JsonArray();
-			for (AuthAccount account : _accounts) {
-				accounts.add(toJson(account));
+			try {
+				_storage.writeLegacy(document);
+				_storageRevision = revision;
+			} catch (IOException | RuntimeException e) {
+				logStorageFailure("write unencrypted accounts", e);
+				return;
 			}
-
-			JsonObject root = new JsonObject();
-			root.addProperty("activeUuid", _activeUuid == null ? null : _activeUuid.toString());
-			root.add("accounts", accounts);
-
-			try (Writer writer = Files.newBufferedWriter(tmpPath, StandardCharsets.UTF_8)) {
-				GSON.toJson(root, writer);
-				AuthAgainMod.LOGGER.info("[AuthAgain] Wrote accounts to temporary file accounts.json.tmp.");
+			if (!AuthAgainConfig.encryptAccounts) {
+				try {
+					_storage.deleteReadableEncrypted();
+				} catch (IOException | GeneralSecurityException | RuntimeException e) {
+					logStorageFailure("remove encrypted accounts", e);
+				}
 			}
-			Files.move(tmpPath, path, ATOMIC_MOVE, REPLACE_EXISTING);
-			AuthAgainMod.LOGGER.info("[AuthAgain] Moved temporary file into accounts.json.");
-		} catch (IOException e) {
-			AuthAgainMod.LOGGER.error("[AuthAgain] Failed to write {}.", path, e);
+		} finally {
+			Arrays.fill(document, (byte) 0);
 		}
+	}
+
+	/**
+	 * Returns whether account persistence can expose plaintext login files.
+	 */
+	public synchronized boolean isUnencrypted() {
+		return getUnencryptedReason() != null;
+	}
+
+	@Nullable
+	public synchronized UnencryptedReason getUnencryptedReason() {
+		if (AuthAgainConfig.persistAccounts) {
+			if (!AuthAgainConfig.encryptAccounts) {
+				return UnencryptedReason.DISABLED;
+			}
+			if (_unencryptedReason != null) {
+				return _unencryptedReason;
+			}
+		}
+		return _storage.hasLegacyFiles() ? UnencryptedReason.LEGACY_FILES : null;
+	}
+
+	private boolean saveEncrypted(byte[] document) {
+		try {
+			_storage.write(document);
+		} catch (IOException | GeneralSecurityException | RuntimeException e) {
+			if (e instanceof IOException) {
+				_unencryptedReason = UnencryptedReason.WRITE_FAILED;
+			} else if (!_storage.hasEncryptionIdentity()) {
+				_unencryptedReason = UnencryptedReason.NO_DEVICE_ID;
+			} else {
+				_unencryptedReason = UnencryptedReason.ENCRYPTION_FAILED;
+			}
+			logStorageFailure("write encrypted accounts", e);
+			return false;
+		}
+		try {
+			_storage.deleteLegacy();
+		} catch (IOException | RuntimeException e) {
+			_unencryptedReason = UnencryptedReason.LEGACY_FILES;
+			logStorageFailure("remove unencrypted accounts", e);
+		}
+		return true;
+	}
+
+	private void readAccounts(byte[] document, boolean merge) throws IOException {
+		try {
+			JsonObject root = GSON.fromJson(new String(document, StandardCharsets.UTF_8), JsonObject.class);
+			if (root == null || !root.has("accounts") || !root.get("accounts").isJsonArray()) {
+				throw new IOException("Invalid account document");
+			}
+			List<AuthAccount> parsed = new ArrayList<>();
+			for (JsonElement element : root.getAsJsonArray("accounts")) {
+				parsed.add(fromJson(element.getAsJsonObject()));
+			}
+			UUID activeUuid = root.has("activeUuid") && !root.get("activeUuid").isJsonNull()
+					? UUID.fromString(root.get("activeUuid").getAsString()) : null;
+			if (!merge || (root.has("storageVersion") && root.get("storageVersion").getAsInt() == 2)) {
+				long revision = readStorageRevision(root);
+				if (merge && _storageRevision > 0 && revision <= _storageRevision) {
+					return;
+				}
+				_accounts = parsed;
+				_activeUuid = activeUuid;
+				_storageRevision = revision;
+				return;
+			}
+			for (AuthAccount account : parsed) {
+				AuthAccount existing = findByUuid(account.uuid());
+				if (existing == null) {
+					_accounts.add(account);
+				} else if (account.lastRefreshedAt() > existing.lastRefreshedAt()
+						&& (!hasRefreshToken(existing) || hasRefreshToken(account))) {
+					_accounts.set(_accounts.indexOf(existing), account);
+				}
+			}
+			if (_activeUuid == null) {
+				_activeUuid = activeUuid;
+			}
+		} finally {
+			Arrays.fill(document, (byte) 0);
+		}
+	}
+
+	private static long readStorageRevision(JsonObject document) throws IOException {
+		if (!document.has("storageRevision")) {
+			return 0;
+		}
+		long revision = Long.parseLong(document.get("storageRevision").getAsString());
+		if (revision < 1 || revision > MAX_STORAGE_REVISION) {
+			throw new IOException("Invalid account storage revision");
+		}
+		return revision;
+	}
+
+	private static boolean hasRefreshToken(AuthAccount account) {
+		JsonObject session = account.session();
+		if (!session.has("msaToken") || !session.get("msaToken").isJsonObject()) {
+			return false;
+		}
+		JsonObject token = session.getAsJsonObject("msaToken");
+		return token.has("refreshToken") && !token.get("refreshToken").isJsonNull();
+	}
+
+	private byte[] serializeAccounts(long revision) {
+		JsonArray accounts = new JsonArray();
+		for (AuthAccount account : _accounts) {
+			accounts.add(toJson(account));
+		}
+		JsonObject root = new JsonObject();
+		root.addProperty("storageVersion", 2);
+		root.addProperty("storageRevision", revision);
+		root.addProperty("activeUuid", _activeUuid == null ? null : _activeUuid.toString());
+		root.add("accounts", accounts);
+		return GSON.toJson(root).getBytes(StandardCharsets.UTF_8);
+	}
+
+	private static void logStorageFailure(String action, Exception error) {
+		// JSON parse exceptions can include account secrets in their messages.
+		AuthAgainMod.LOGGER.warn("[AuthAgain] Could not {} ({}).", action, error.getClass().getSimpleName());
 	}
 
 	public synchronized AuthAccount findByUuid(UUID uuid) {

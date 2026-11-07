@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Base64;
+import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeAll;
@@ -152,7 +153,8 @@ class ReauthServiceTest {
 	@Test
 	void resolveLoginKeepsWrongAccountSeparateFromReauthTarget(@TempDir Path dir) {
 		AuthAgainConfig.persistAccounts = true;
-		AccountStore store = new AccountStore(dir.resolve("accounts.json").toString());
+		AccountStore store = new AccountStore(dir.resolve("pack/config/authagain/accounts.json"),
+				List.of(new DeviceIdentity("system-uuid", "987d126a-ace7-48be-a91f-83b8cf914c28")));
 
 		AuthAccount a = new AuthAccount("Steve", UUID.randomUUID(), "xuid-a", session("a"));
 		store.add(a);
@@ -180,7 +182,8 @@ class ReauthServiceTest {
 	@Test
 	void resolveLoginUpdatesExistingAccountInPlace(@TempDir Path dir) {
 		AuthAgainConfig.persistAccounts = true;
-		AccountStore store = new AccountStore(dir.resolve("accounts.json").toString());
+		AccountStore store = new AccountStore(dir.resolve("pack/config/authagain/accounts.json"),
+				List.of(new DeviceIdentity("system-uuid", "987d126a-ace7-48be-a91f-83b8cf914c28")));
 
 		UUID uuid = UUID.randomUUID();
 		AuthAccount existing = new AuthAccount("Steve", uuid, "xuid-old", session("old"));
