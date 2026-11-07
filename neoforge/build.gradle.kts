@@ -107,7 +107,7 @@ tasks.remapJar {
 tasks.processResources {
     exclude("META-INF/mods.toml")
     properties(
-        listOf("META-INF/neoforge.mods.toml", "pack.mcmeta"),
+        listOf("META-INF/neoforge.mods.toml", "pack.mcmeta", "authagain-version.txt"),
         "id" to p.get<String>("mod.id"),
         "name" to p.get<String>("mod.name"),
         "version" to modVersion,

@@ -24,7 +24,7 @@ public final class NeoForgeScreenHooks {
 	}
 
 	private static void onRender(final ScreenEvent.Render.Post event) {
-		ScreenHooks.onScreenRender(event.getScreen(), event.getGuiGraphics());
+		ScreenHooks.onScreenRender(event.getScreen(), event.getGuiGraphics(), event.getMouseX(), event.getMouseY());
 	}
 }
 *///?}

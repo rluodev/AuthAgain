@@ -1,3 +1,6 @@
+import dev.kikugie.stonecutter.build.StonecutterBuildExtension
+import org.gradle.api.tasks.SourceSetContainer
+
 plugins {
     id("dev.kikugie.stonecutter")
     id("dev.architectury.loom") version "1.17.491" apply false
@@ -12,6 +15,29 @@ stonecutter parameters {
     }
     constants {
         match(loader, "forge", "neoforge")
+    }
+
+    project.afterEvaluate {
+        val build = extensions.getByType<StonecutterBuildExtension>()
+        extensions.getByType<SourceSetContainer>().forEach { sourceSet ->
+            val sharedSource = rootProject.file("src/${sourceSet.name}")
+            val prepare = build.tasks.prepare.getValue(sourceSet.name)
+            prepare.configure {
+                root.set(sharedSource)
+                source.setFrom(fileTree(sharedSource).matching(build.filters))
+            }
+            build.tasks.generate.getValue(sourceSet.name).configure {
+                from(sharedSource) {
+                    exclude {
+                        !it.isDirectory && it.relativePath.getFile(prepare.get().destination.get().asFile).isFile
+                    }
+                }
+            }
+            if (build.current.isActive && !build.branch.location.resolve("src").toFile().isDirectory) {
+                sourceSet.java.srcDir(sharedSource.resolve("java"))
+                sourceSet.resources.srcDir(sharedSource.resolve("resources"))
+            }
+        }
     }
 }
 

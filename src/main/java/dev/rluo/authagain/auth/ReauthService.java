@@ -10,9 +10,12 @@ import net.raphimc.minecraftauth.msa.model.MsaDeviceCode;
 import net.raphimc.minecraftauth.msa.service.impl.DeviceCodeMsaAuthService;
 import net.raphimc.minecraftauth.util.jwt.Jwt;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -28,7 +31,7 @@ import java.util.function.Consumer;
  */
 public final class ReauthService {
 
-    private static final String USER_AGENT = "AuthAgain/1.0.0";
+    private static final String USER_AGENT = "AuthAgain/" + buildVersion();
     private static final HttpClient CLIENT = MinecraftAuth.createHttpClient(USER_AGENT);
 
     private static final String PROFILE_ENDPOINT = "https://api.minecraftservices.com/minecraft/profile";
@@ -45,6 +48,24 @@ public final class ReauthService {
     }
 
     private ReauthService() {
+    }
+
+    /**
+     * Reads the version expanded by processResources for this build.
+     */
+    private static String buildVersion() {
+        try (InputStream input = ReauthService.class.getResourceAsStream("/authagain-version.txt")) {
+            if (input == null) {
+                throw new IllegalStateException("AuthAgain build version resource is missing");
+            }
+            String version = new String(input.readAllBytes(), StandardCharsets.UTF_8).trim();
+            if (version.isEmpty() || version.contains("${")) {
+                throw new IllegalStateException("AuthAgain build version resource was not generated");
+            }
+            return version;
+        } catch (IOException e) {
+            throw new IllegalStateException("Could not read the AuthAgain build version", e);
+        }
     }
 
     /**
